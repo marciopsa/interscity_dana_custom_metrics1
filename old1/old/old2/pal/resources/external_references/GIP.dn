@@ -1,0 +1,3 @@
+interface GIP {
+	char[] getGlobalInterface()
+}

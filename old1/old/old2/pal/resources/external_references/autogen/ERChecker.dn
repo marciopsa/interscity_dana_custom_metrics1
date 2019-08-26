@@ -1,0 +1,6 @@
+uses data.String
+
+interface ERChecker {
+	String[] getRequiredServices()
+	bool check()
+}

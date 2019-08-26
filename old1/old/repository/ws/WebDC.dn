@@ -1,0 +1,68 @@
+// Dispatcher...
+component provides ws.Web requires io.Output out, data.StringUtil strUtil, data_collector.DataCollectorManager dataCollectorManager {
+
+	char id[]
+
+	bool match(char path[], char expr[]) {
+		String helper[] = strUtil.explode(path, "?")
+		String dirs[] = strUtil.explode(helper[0].string, "/")
+		String exprDirs[] = strUtil.explode(expr, "/")
+
+		if (dirs.arrayLength == 3)  {id = dirs[2].string}  // storing resource id.
+		if (dirs.arrayLength != exprDirs.arrayLength) { return false }
+
+		for (int i = 0; i < exprDirs.arrayLength; i++) {
+			if ((dirs[i].string != exprDirs[i].string) && (exprDirs[i].string != "*")) {
+				return false
+			}
+		}
+		return true
+	}
+
+	void failed(DocStream s) {
+		s.write("{\"response\" : \"failed\"}")
+	}
+
+	bool Web:get(char path[], DocStream stream, HashTable params) {
+		// para cada url, voce pode mapear para uma funcao de um componente qualquer
+		// caso nao a url nao seja uma url esperada, retorne mensagem de falha
+		if (match(path, "/collector/datafromresource/*")) {  //get the last data sent by resource defined by its ID.
+			//out.println("Uuid found: $(id)")
+			dataCollectorManager.receiveDataFromResource(id, stream)
+		} else {
+			if (match(path, "/collector/resources/*/data")) {  //get historical data sent by resource defined by its ID.
+				//out.println("Uuid found2: $(id)")
+				dataCollectorManager.getAllDataFromResource(id, stream)
+		} else { failed(stream) }
+	}
+		return true
+	}
+
+	bool Web:post(char path[], char contentType[], byte content[], DocStream stream, HashTable params) {
+		// para cada url, voce pode mapear para uma funcao de um componente qualquer
+		// caso nao a url nao seja uma url esperada, retorne mensagem de falha
+		if (match(path ,"/collector/data/*")) {
+			if ((params == null)) { failed(stream) }
+			//out.println("uuid found: $(id)")
+			dataCollectorManager.storeData(content, id, stream)
+		} else {
+			if (match(path ,"/collector/data")) {
+
+			} else
+	         { failed(stream) }
+    }
+		return true
+	}
+
+	String[] Web:urls() {
+		String exprs[] = new String[]()
+		exprs = new String[](exprs, new String("/collector/data/{id}"))
+		exprs = new String[](exprs, new String("/collector/datafromresource/{id}"))
+		exprs = new String[](exprs, new String("/collector/resources/{id}/data"))  //Get historical data of sensor capabilities of a specific city resource.
+		return exprs
+	}
+
+
+
+
+}

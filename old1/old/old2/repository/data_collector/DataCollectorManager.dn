@@ -1,0 +1,66 @@
+
+
+
+component provides DataCollectorManager requires net.http.HTTPRequest request, io.Output out, data.StringUtil strUtil, data.IntUtil intUtil, data.json.JSONEncoder encoder, data.adt.HashTable {
+
+	HashTable resourcesData_hashtable = new HashTable()
+
+	void DataCollectorManager:storeData(byte content[], char id[], DocStream s) {
+
+		//out.println("Storing data with id: $(id)...")
+
+		CityResourceData data_ = new CityResourceData()
+		data_.resourceData = content
+		resourcesData_hashtable.put(id, data_)
+
+		//recovering data from HashTable.
+		CityResourceData storedData = new CityResourceData()
+		storedData = resourcesData_hashtable.get(id)
+		byte storeContent[] = storedData.resourceData
+
+		//out.println("Stored content: $(storeContent)")
+	}
+
+	void DataCollectorManager:getAllDataFromResource(char resource_id[], DocStream stream) {
+		//out.println("uuid found on receiveDataFromResource() method : $(resource_id)")
+		/* CityResourceData json_DataToBeSent[] = getAllDataSentFromResource(resource_id)
+		if (json_DataToBeSent == null) {
+			stream.write("resource data not found")
+		} else {
+			stream.write(json_DataToBeSent[0].resourceData)
+		} */
+	}
+
+	/* void getAllDataFromResource(char resource_id[], DocStream stream) {
+
+  } */
+
+	void DataCollectorManager:receiveDataFromResource(char resource_id[], DocStream stream) {
+		//out.println("uuid found on receiveDataFromResource() method : $(resource_id)")
+		CityResourceData jsonBus_DataToBeSent = getLastDataSentFromResource(resource_id)
+		 if (jsonBus_DataToBeSent == null) {
+			 stream.write("resource data not found")
+		 } else {
+			 stream.write(jsonBus_DataToBeSent.resourceData)
+		 }
+	}
+
+	CityResourceData getLastDataSentFromResource(char resource_id[]) {
+		//out.println("Getting data with id: $(resource_id)...")
+
+		/* CityResourceData data_ = new CityResourceData()
+		data_.resourceData = content
+		resourcesData_hashtable.put(id, data_) */
+
+		//recovering data from HashTable.
+		CityResourceData lastDataFromResource = new CityResourceData()
+		lastDataFromResource = resourcesData_hashtable.get(resource_id)
+		if (lastDataFromResource == null) {return null}
+		byte storeContent[] = lastDataFromResource.resourceData
+
+		//out.println("lastDataFromResource content: $(storeContent)")
+
+		return lastDataFromResource
+	}
+
+}

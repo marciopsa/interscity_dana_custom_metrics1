@@ -1,0 +1,15 @@
+// MainLearning
+//
+// This module is responsible for learning/controlling an emergent system.
+// 
+// Author: Roberto Rodrigues Filho
+// March @ 2017
+
+const char debugMSG[] = "[@Learner]"
+
+component provides App requires io.Output out, data.IntUtil iu, learning.Learning learning {
+	int App:main(AppParam params[]) {
+		learning.learns()
+		return 0
+	}
+} 

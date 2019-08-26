@@ -1,0 +1,18 @@
+uses data.String
+
+interface RESys {
+	/* Assembly functions */
+	String[] getAllConfigs()
+	char[] getConfig()
+	void setMain(char path[])
+	void setConfig(char config[])
+	void removeComp(String compPaths[])
+	void addComp(String compPaths[])
+	/* Perception functions */
+	void addProxy(char exp[])
+	void removeProxy(String proxyPaths[])
+	char[] getPerceptionData()// returns json
+	String[] getProxies()
+	/* RESys functions */
+	RESys(char ip[], int port)
+}

@@ -1,0 +1,370 @@
+// InteractiveAssembly.dn
+// A component that provides interactive access to assembly module 
+//
+// Author: Roberto Rodrigues Filho
+// February @ 2017
+uses external_references.autogen.ERChecker
+uses external_references.GIP
+
+const char debugMSG[] = "[@InteractiveAssembly]"
+
+const char HELP[] 			 = "help"
+const char GET_CONFIG[]		 = "get_config"
+const char GET_ALL_CONFIGS[] = "get_all_configs"
+const char SET_CONFIG[]   	 = "set_config"
+const char ADD_COMP[] 		 = "add_comp"
+const char REMOVE_COMP[] 	 = "remove_comp"
+const char GET_COMPONENTS[]	 = "get_components"
+const char CHANGE_TEST[]	 = "change_test"
+const char CHECK[]			 = "check"
+const char FILTER[]			 = "filter"
+const char GROUP_DEF[]		 = "group_def"
+const char LIST_GROUP[]		 = "list_group"
+const char EXIT[] 			 = "exit"
+
+/* this filters the configurations based on their provided globalInterface */
+data ConfigGroup {
+	char group[]
+	String configList[]
+}
+
+/* these data types make up the important structure ... */
+data Group {
+	char providesGlobalIntf[]
+	String globalInterfaces[]
+	Machines machines[]
+}
+
+data Machines {
+	String ip[]
+	String configList[]
+}
+
+component provides App requires io.Output out, data.IntUtil iu, io.Input in, data.StringUtil strUtil, 
+	composition.Assembly assembly, util.RandomInt ran, time.Timer t, time.Calendar cal, 
+	time.DateUtil dateUtil, external_references.ERGen eRGen {
+
+	String configs[] = null
+	int configPointer = 0
+	Group group[] = null
+
+	void help() {
+		out.println("$(debugMSG) Command list:")
+		out.println(" $(debugMSG) $(HELP) - to list all commands")
+		out.println(" $(debugMSG) $(GET_CONFIG) show current config")
+		out.println(" $(debugMSG) $(GET_ALL_CONFIGS) list all configs")
+		out.println(" $(debugMSG) $(SET_CONFIG) a - set config to 'a'")
+		out.println(" $(debugMSG) $(ADD_COMP) a - add a component")
+		out.println(" $(debugMSG) $(REMOVE_COMP) a - remove a component")
+		out.println(" $(debugMSG) $(GET_COMPONENTS) - get components")
+		out.println(" $(debugMSG) $(CHECK) - verify if the connected ER is connected to the component")
+		out.println(" $(debugMSG) $(FILTER) - filter valid configurations")
+		out.println(" $(debugMSG) $(EXIT) - to finish execution")
+	}
+
+	String[] filterCheckConfigs(String toBeFiltered[]) {
+		String filteredComps[] = null
+		bool checked
+		for (int i = 0; i < toBeFiltered.arrayLength; i++) {
+			assembly.setConfig(toBeFiltered[i].string)
+			IDCReference compsIDC[] = assembly.getCompsByProvidedInterface("ERChecker")
+			if (compsIDC == null) {
+				filteredComps = new String[](filteredComps, new String(assembly.getConfig()))
+			} else {
+				checked = true
+				for (int j = 0; j < compsIDC.arrayLength; j++) {
+					if (compsIDC[j].class :< ERChecker != null) {
+						ERChecker checkerComp = new ERChecker() from compsIDC[j].class :< ERChecker
+						if (!checkerComp.check()) {
+							checked = false
+							break
+						}
+					}
+				}
+				if (checked) {
+					filteredComps = new String[](filteredComps, new String(assembly.getConfig()))
+				}
+			}
+		}
+		return filteredComps
+	}
+
+	ConfigGroup[] separateConfigs(String filteredComps[]) {
+		// separating composition into groups based on provided interface...
+		ConfigGroup configGroup[] = null
+		for (int i = 0; i < filteredComps.arrayLength; i++) {
+			String groupName[] = null
+			assembly.setConfig(filteredComps[i].string)
+			IDCReference compsGIP[] = assembly.getCompsByProvidedInterface("GIP")
+			for (int k = 0; k < compsGIP.arrayLength; k++) {
+				if (compsGIP[k].class :< GIP != null) {
+					GIP gip = new GIP() from compsGIP[k].class :< GIP
+					groupName = new String[](groupName, new String(gip.getGlobalInterface()))
+				}
+			}
+			if (groupName == null) { out.println("------- PROBLEM: No global interface!") }
+			else if (groupName.arrayLength > 1) { out.println("------- PROBLEM: Double global interface!") }
+			else if (groupName.arrayLength == 0) { out.println("------- PROBLEM: No global interface!") }
+			else if (groupName.arrayLength == 1) {
+				if (configGroup == null) {
+					configGroup = new ConfigGroup[1]
+					configGroup[0] = new ConfigGroup()
+					configGroup[0].group = groupName[0].string
+					configGroup[0].configList = new String[](configGroup[0].configList, filteredComps[i])
+				} else {
+					int groupPointer = INT_MAX
+					for (int j = 0 ; j < configGroup.arrayLength; j++) {
+						if (configGroup[j].group == groupName[0].string) {
+							groupPointer = j
+							break
+						}
+					}
+					if (groupPointer == INT_MAX) {
+						ConfigGroup newConfig = new ConfigGroup()
+						newConfig.group = groupName[0].string
+						newConfig.configList = new String[](newConfig.configList, filteredComps[i])
+						configGroup = new ConfigGroup[](configGroup, newConfig)
+					} else {
+						configGroup[groupPointer].configList = new String[](configGroup[groupPointer].configList,
+							filteredComps[i])
+					}
+				}
+			} else { out.println("------- PROBLEM: No global interface!") }
+		}
+		return configGroup
+	}
+
+	void commandInterpret(char cmd[]) {
+		String cmdList[] = strUtil.explode(cmd, " ")
+		if (cmdList.arrayLength == 1) {
+			if (cmd == HELP) {
+				help()
+			} else if (cmd == GET_CONFIG) {
+				out.println("$(debugMSG) Current config: $(assembly.getConfig())")
+			} else if (cmd == GET_ALL_CONFIGS) {
+				String configsStr[] = assembly.getAllConfigs()
+				for (int i = 0; i < configsStr.arrayLength; i++) {
+					out.println("$(debugMSG) $(iu.intToString(i)) $(configsStr[i].string)")
+				}
+				out.println("$(debugMSG) $(iu.intToString(configsStr.arrayLength)) configs:")
+			} else if (cmd == GET_COMPONENTS) {
+				IDCReference comps[] = assembly.getComponents(new String[](new String("../metacom/monitoring/proxies/HTTPProxy.o")))
+				if (comps.arrayLength > 0) {
+					for (int i = 0; i < comps.arrayLength; i++) {
+						out.println("$(debugMSG) $(comps[i].path)")
+					}
+				} else { out.println("$(debugMSG) No components!") }
+			} else if (cmd == CHANGE_TEST) {
+				if (configs == null) { configs = assembly.getAllConfigs() }
+				for (int i = 0; i < configs.arrayLength; i++) {
+					changeTest()
+					t.sleep(2000)
+				}
+			} else if (cmd == CHECK) {
+				IDCReference comps[] = assembly.getCompsByProvidedInterface("ERChecker")
+				for (int i = 0; i < comps.arrayLength; i++) {
+					if (comps[i].class :< ERChecker != null) {
+						ERChecker checker = new ERChecker() from comps[i].class :< ERChecker
+						if (checker.check()) { out.println("$(debugMSG) Component verified!") }
+						else { out.println("$(debugMSG) Component invalid!") }
+					}
+				}
+			} else if (cmd == FILTER) {
+				String filteredComps[] = filterCheckConfigs(assembly.getAllConfigs())
+				ConfigGroup hey[] = separateConfigs(filteredComps)
+				// list of groups
+				for (int i = 0; i < hey.arrayLength; i++) {
+					out.println("GROUP: $(hey[i].group)")
+					out.println("GROUP number: $(iu.intToString(hey[i].configList.arrayLength))")
+				}
+			} else if (cmd == GROUP_DEF) {
+				String filtCheckConfigs[] = filterCheckConfigs(assembly.getAllConfigs())
+				ConfigGroup configsProvideGroup[] = separateConfigs(filtCheckConfigs)
+				//String providedIntfs[] = new String[](new String("HTTP"), new String("Memcached"), 
+				//	new String("write:SQL"), new String("read:SQL"))
+				String providedIntfs[] = new String[](new String("HTTP"))
+				for (int providedIntfPointer = 0; providedIntfPointer < providedIntfs.arrayLength; providedIntfPointer++) {
+					char providedIntf[] = providedIntfs[providedIntfPointer].string
+					String onlyHTTPProvidedComps[] = null
+					for (int i = 0; i < configsProvideGroup.arrayLength; i++) {
+						if (configsProvideGroup[i].group == providedIntf) {
+							onlyHTTPProvidedComps = configsProvideGroup[i].configList
+							break
+						}
+					}
+					for (int i = 0; i < onlyHTTPProvidedComps.arrayLength; i++) {
+						String requiredGlobal[] = getRequiredGlobal(onlyHTTPProvidedComps[i].string)
+						String intf[] = null
+						String ips[] = null
+						for (int j = 0; j < requiredGlobal.arrayLength; j++) {
+							String helper[] = strUtil.explode(requiredGlobal[j].string, "/")
+							if (!isStrInArray(helper[0].string, intf)) {
+								intf = new String[](intf, new String(helper[0].string))
+							}						
+							ips = new String[](ips, new String(helper[1].string))
+						}
+						int groupPointer = INT_MAX
+						for (int k = 0; k < group.arrayLength; k++) {
+							if ((isSame(group[k].globalInterfaces, intf)) && 
+								(group[k].providesGlobalIntf == providedIntf)) {
+								groupPointer = k
+								break
+							}
+						}
+						if (groupPointer == INT_MAX) {
+							Group newGroup = new Group()
+							newGroup.providesGlobalIntf = providedIntf
+							newGroup.globalInterfaces = intf
+							Machines newMachine = new Machines()
+							newMachine.ip = ips
+							newMachine.configList = new String[](newMachine.configList, onlyHTTPProvidedComps[i])
+							newGroup.machines = new Machines[](newGroup.machines, newMachine)
+							group = new Group[](group, newGroup)
+						} else {
+							int ipPointer = INT_MAX
+							for (int j = 0; j < group[groupPointer].machines.arrayLength; j++) {
+								if (isSame(group[groupPointer].machines[j].ip, ips)) {
+									ipPointer = j
+									break
+								}
+							}
+							if (ipPointer == INT_MAX) {
+								Machines newMachine = new Machines()
+								newMachine.ip = ips
+								newMachine.configList = new String[](newMachine.configList, onlyHTTPProvidedComps[i])
+								group[groupPointer].machines = new Machines[](group[groupPointer].machines, newMachine)
+							} else {
+								group[groupPointer].machines[ipPointer].configList = 
+									new String[](group[groupPointer].machines[ipPointer].configList, onlyHTTPProvidedComps[i])
+							}
+						}
+					}
+				}
+				
+			} else if (cmd == LIST_GROUP) {
+				for (int i = 0; i < group.arrayLength; i++) {
+					out.println("$(debugMSG) GROUP PROVIDES: $(group[i].providesGlobalIntf)")
+					out.print("REQUIRES: ")
+					if (group[i].globalInterfaces.arrayLength == 0) {
+						out.print("NO EXTERNAL REFERENCE")
+					} else {
+						printInterfaces(group[i].globalInterfaces)	
+					}
+					out.println("")
+					if (group[i].machines.arrayLength > 0) {
+						printListIP(group[i].machines)
+					}
+					out.println("\n")
+				}
+			} else { out.println("$(debugMSG) Invalid command.") }
+		} else if (cmdList.arrayLength == 2) {
+			//TODO: this is how it was...
+			//assembly.setConfig(cmdList[1].string)
+			// THIS IS HOW IT IS BECAUSE OF THE input BUG!!!
+			if (cmdList[0].string == SET_CONFIG) {
+				String configsArray[] = assembly.getAllConfigs()
+				int pointer = iu.intFromString(cmdList[1].string)
+				assembly.setConfig(configsArray[pointer].string)
+			} else if (cmdList[0].string == ADD_COMP) {
+				assembly.addComp(new String[](new String(cmdList[1].string)))
+			} else if (cmdList[0].string == REMOVE_COMP) {
+				assembly.removeComp(new String[](new String(cmdList[1].string)))
+			} else {
+				out.println("$(debugMSG) Invalid command.")
+			}
+		} else {
+			//out.println("$(debugMSG) $(iu.intToString(cmdList.arrayLength))")
+			out.println("$(debugMSG) Invalid command.")
+		}
+	}
+
+	void printListIP(Machines machines[]) {
+		for (int i = 0; i < machines.arrayLength; i++) {
+			if (i > 0) { out.print(" | ") }
+			char ips[] = strUtil.implode(machines[i].ip, ",")
+			out.print("$(ips) [$(iu.intToString(machines[i].configList.arrayLength))] ")
+			if (i == (machines.arrayLength-1)) {
+				out.println("$(machines[i].configList[0].string)")
+			}
+		}
+	}
+
+	void printInterfaces(String intfs[]) {
+		for (int i = 0; i < intfs.arrayLength; i++) {
+			if (i > 0) { out.print(" | ") }
+			out.print("$(intfs[i].string) ")
+		}
+	}
+
+	bool isSame(String str1[], String str2[]) {
+		if (str1.arrayLength != str2.arrayLength) { return false }
+		bool isIn
+		for (int i = 0; i < str1.arrayLength; i++) {
+			isIn = false
+			for (int j = 0; j < str2.arrayLength; j++) {
+				if (str1[i].string == str2[j].string) {
+					isIn = true
+					break
+				}
+			}
+			if (!isIn) { return false }
+		}
+		return true
+	}
+
+	String[] getRequiredGlobal(char config[]) {
+		String requiredGlobal[] = null
+		assembly.setConfig(config)
+		IDCReference compsIDC[] = assembly.getCompsByProvidedInterface("ERChecker")
+		for (int j = 0; j < compsIDC.arrayLength; j++) {
+			if (compsIDC[j].class :< ERChecker != null) {
+				ERChecker checkerComp = new ERChecker() from compsIDC[j].class :< ERChecker
+				requiredGlobal = new String[](requiredGlobal, checkerComp.getRequiredServices())
+			}
+		}
+		return requiredGlobal
+	}
+
+	bool isStrInArray(char str[], String array[]) {
+		if (array == null) { return false }
+		for (int i = 0; i < array.arrayLength; i++) {
+			if (str == array[i].string) {
+				return true
+			}
+		}
+		return false
+	}
+
+	void changeTest() {
+		assembly.setConfig(configs[configPointer].string)
+		out.println("$(debugMSG) $(configs[configPointer].string)")
+		if (configs[configPointer].string == assembly.getConfig()) {
+			out.println("$(debugMSG) SEEMS TO BE WORKING!")
+		} else {
+			out.println("$(debugMSG) SOMETHING WENT WRONG!")
+		}
+		configPointer++
+		if (configPointer == configs.arrayLength) { configPointer = 0 }
+	}
+
+	int App:main(AppParam params[]) {
+		if (params.arrayLength < 1) {
+			out.println("$(debugMSG) use: dana InteractiveAssembly app.main.Component.o")
+			return 1
+		}
+		/*eRGen.generateER()
+		eRGen.compileER()*/
+		AppParam params2[] = null
+		for (int i = 1; i < params.arrayLength; i++) {
+			params2 = new AppParam[](params2, params[i])
+		}
+		assembly.setMain(params[0].string, params2)
+		char cmd[] = "start"
+		while (cmd != "exit") {
+			if (cmd != "start") { commandInterpret(cmd)	}
+			out.print("assembly> ")
+			cmd = in.readln()
+		}
+		return 0
+	}
+}

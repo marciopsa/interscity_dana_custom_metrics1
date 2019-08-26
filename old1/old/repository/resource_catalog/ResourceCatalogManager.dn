@@ -1,0 +1,266 @@
+uses data.String
+
+
+/*
+data ResourceCapabilitiesToBeSendToApplication {
+	char id[]
+	char name[]
+	char function[]
+	char description[]
+}
+
+data FinalResponse {
+	ResourceCapabilitiesToBeSendToApplication resourceCapabilitiesToBeSendToApplication[]
+}
+
+data ResponseToApplication {
+	FinalResponse resp
+} */
+data ResponseToApplication {
+	ResourcesByCapability resources[]
+}
+
+data ResourcesByCapability {
+	char uuid[]
+	char description[]
+	String capabilities[]
+	char status[]
+	char lat[]
+	char lon[]
+}
+
+/* data ResourcesByCapability {
+	char uuid[]
+	char description[]
+	Capabilities capabilities[]
+	char status[]
+	char lat[]
+	char lon[]
+} */
+//-----------------------
+/* data ResourceCapabilitiesToBeSendToApplication {
+	char id[]
+	char name[]
+	char function[]
+	char description[]
+}
+
+data ResponseToApplication {
+	ResourceCapabilitiesToBeSendToApplication resourceCapabilitiesToBeSendToApplication[]
+} */
+
+/* data Capabilities {
+	char value[]
+}
+
+data ResourceMetaData {
+	char description[]
+	Capabilities capabilities[]
+	char status[]
+	dec lat
+	dec lon
+}*/
+
+data ResponseToResource {
+	char response[]
+	char uuid[]
+	char device[]
+	char description[]
+	String capabilities[]
+  char status[]
+  dec lat
+  dec lon
+  char country[]
+  char state[]
+  char city[]
+  char neighborhood[]
+  char postal_code[]
+  char created_at[]
+  char updated_at[]
+  int id
+}
+/*
+data InterSCityData {
+	ResourceMetaData data_
+} */
+
+
+
+data ResourceMetaData {
+	char uuid[]
+	char description[]
+	String capabilities[]
+	char status[]
+	dec lat
+	dec lon
+}
+
+data InterSCityData {
+	ResourceMetaData data_
+}
+
+component provides ResourceCatalogManager requires io.Output out, data.StringUtil strUtil, data.IntUtil intUtil,
+										data.json.JSONEncoder encoder, data.adt.HashTable {
+
+	HashTable resourceMetaData_hashtable = new HashTable()
+
+	//char uuid[]   //Not used yet!!!
+	int global_id = 0
+
+	char selected_resource_uuid[] //this is a uuid of selected resource by getResourceMetaData Method!!!!
+
+	void ResourceCatalogManager:register(byte content[], DocStream s) {
+		//Request example: curl -d '{"data": {"description": "A public bus","capabilities": ["temperature","humidity","illuminate"],"status": "active","lat": -23.559616,"lon": -46.731386}}' -H 'Content-Type: application/json' http://localhost:2018/adaptor/resources
+		Map map[] = new Map[](new Map("data", "data_"))
+		InterSCityData bus = encoder.jsonToData(content, typeof(InterSCityData), map)
+
+		//Storing metadata on the global database of the Resource Catalog Microservice.
+		int created_id = storeResourceMetaData(bus)
+		char created_id_str[] = intUtil.intToString(created_id)
+		out.println("ID stored on Resource Catalog Microservice: $(created_id_str)")
+
+
+		HashTableItem hashTableItems[] = resourceMetaData_hashtable.getContents()
+
+		InterSCityData storedResource
+		out.println("iterando nos itens do HashTable...")
+		for (int i = 0; i < resourceMetaData_hashtable.getLength(); i++) {
+
+			storedResource = hashTableItems[i].value//resourceMetaData_hashtable.get(i)
+			out.println("storedResource.data_.description nº: $(intUtil.intToString(i)), valor(description): $(storedResource.data_.description)")
+		}
+
+
+
+		//Composing response message to Resource Adaptor Microservice
+		ResponseToResource r = new ResponseToResource()
+		r.response = "success"
+		r.uuid = created_id_str//selected_resource_uuid
+		r.device = ""
+		r.description = bus.data_.description
+		r.capabilities = new String[bus.data_.capabilities.arrayLength]
+		for (int i = 0; i < bus.data_.capabilities.arrayLength; i++) {
+			r.capabilities[i] = bus.data_.capabilities[i]
+		}
+		r.status = bus.data_.status
+		r.lat = bus.data_.lat
+		r.lon = bus.data_.lon
+		r.country = "Brazil"  											// getCountry()
+		r.state = "São Paulo"												// getState()
+		r.city = "São Paulo"												// getCity()
+		r.neighborhood = "Butantã"									// getNeighborhood()
+		r.postal_code = null												// getPostalCode()
+		r.created_at = "2018-05-07T01:25:49.939Z"		// getCreatedAt()
+		r.updated_at = "2018-05-07T01:25:49.939Z"		// getUpdatedAt()
+		r.id = created_id
+
+		out.println("Sending response to Resource Adaptor...")
+		s.write(encoder.jsonFromData(r, null))
+	}
+
+
+
+	void ResourceCatalogManager:getResourcesByCapability(char capability[], DocStream stream) {
+		out.println("Sending response to Resource Discovery987654...")
+
+		InterSCityData interSCityDataStored = getResourceMetaData(capability)
+
+		if (interSCityDataStored == null) {
+			//Composing response message to Resource Adaptor Microservice
+			ResponseToResource r = new ResponseToResource()
+			r.response = "resource not found"
+			r.uuid = ""
+			r.device = ""
+			r.description = ""
+			/* r.capabilities = new String[bus.data_.capabilities.arrayLength]
+			for (int i = 0; i < bus.data_.capabilities.arrayLength; i++) {
+				r.capabilities[i] = bus.data_.capabilities[i]
+			} */
+
+			 r.status = ""
+			r.lat = 0
+			r.lon = 0
+			r.country = ""  											// getCountry()
+			r.state = ""												// getState()
+			r.city = ""											// getCity()
+			r.neighborhood = ""									// getNeighborhood()
+			r.postal_code = ""												// getPostalCode()
+			r.created_at = ""		// getCreatedAt()
+			r.updated_at = ""		// getUpdatedAt()
+			r.id = 0//interSCityDataStored.data_.uuid
+
+			out.println("Sending response to Resource Discovery1234...")
+			out.println("selected_resource_uuid12: $(selected_resource_uuid)")
+			stream.write(encoder.jsonFromData(r, null))
+		} else {
+			//Composing response message to Resource Adaptor Microservice
+			ResponseToResource r = new ResponseToResource()
+			r.response = "success"
+			r.uuid = selected_resource_uuid//"123"//interSCityDataStored.data_.uuid
+			r.device = ""
+			r.description = interSCityDataStored.data_.description
+			/* r.capabilities = new String[bus.data_.capabilities.arrayLength]
+			for (int i = 0; i < bus.data_.capabilities.arrayLength; i++) {
+				r.capabilities[i] = bus.data_.capabilities[i]
+			} */
+
+			r.status = interSCityDataStored.data_.status
+			r.lat = interSCityDataStored.data_.lat
+			r.lon = interSCityDataStored.data_.lon
+			r.country = "Brazil"  											// getCountry()
+			r.state = "São Paulo"												// getState()
+			r.city = "São Paulo"												// getCity()
+			r.neighborhood = "Butantã"									// getNeighborhood()
+			r.postal_code = null												// getPostalCode()
+			r.created_at = "2018-05-07T01:25:49.939Z"		// getCreatedAt()
+			r.updated_at = "2018-05-07T01:25:49.939Z"		// getUpdatedAt()
+			r.id = intUtil.intFromString(selected_resource_uuid)
+
+			out.println("Sending response to Resource Discovery1234...")
+			out.println("selected_resource_uuid1234: $(selected_resource_uuid)")
+			stream.write(encoder.jsonFromData(r, null))
+		}
+}
+
+	int storeResourceMetaData(InterSCityData resourceMetatData) {
+
+		/* Map map[] = new Map[](new Map("data", "data_"))
+		InterSCityData bus = encoder.jsonToData(content, typeof(InterSCityData), map) */
+
+		out.println("global_id-before: $(intUtil.intToString(global_id))")
+		int key = global_id
+
+		out.println("key: $(intUtil.intToString(key))")
+		global_id++
+
+
+		resourceMetaData_hashtable.put(key, resourceMetatData)
+	  out.println("global_id-after: $(intUtil.intToString(global_id))")
+		return key
+	}
+
+	//return null, if there's no data matched,
+	InterSCityData getResourceMetaData(char search_string[]) {
+		InterSCityData resourceMetatData
+		String capabilities[]
+
+		HashTableItem hashTableItems[] = resourceMetaData_hashtable.getContents()
+
+		InterSCityData storedResource
+		out.println("iterando nos itens do HashTable no método getResourceMetaData...")
+		for (int i = 0; i < resourceMetaData_hashtable.getLength(); i++) {
+
+			storedResource = hashTableItems[i].value//resourceMetaData_hashtable.get(i)
+			out.println("777777storedResource.data_.description nº: $(intUtil.intToString(i)), valor(description): $(storedResource.data_.description), search_string: $(search_string)")
+			if (strUtil.iequal(storedResource.data_.description, search_string)) {
+				out.println("223344resource found, its ID is: $(intUtil.intToString(i))")
+				selected_resource_uuid = intUtil.intToString(i)
+				//storedResource.data_.uuid = intUtil.intToString(i)
+				return storedResource
+			}
+
+		}
+
+		return null
+	}
+}

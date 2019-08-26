@@ -1,0 +1,7 @@
+uses data.adt.HashTable
+uses ws.DocStream
+
+interface ResourceDiscoveryManager {
+	void discoveryResourceByCapability(char capability_value[], DocStream s)
+	//void receivingDataFromResource(char capability_value[], DocStream stream)
+}

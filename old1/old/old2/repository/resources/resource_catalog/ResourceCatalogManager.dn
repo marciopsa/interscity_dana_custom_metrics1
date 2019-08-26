@@ -1,0 +1,7 @@
+uses data.adt.HashTable
+uses ws.DocStream
+
+interface ResourceCatalogManager {
+	void register(byte content[], DocStream stream)
+	void getResourcesByCapability(char capability[], DocStream stream)
+}

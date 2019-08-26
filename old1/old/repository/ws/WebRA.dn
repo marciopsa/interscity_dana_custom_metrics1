@@ -1,0 +1,60 @@
+// Dispatcher...
+component provides ws.Web requires io.Output out, data.StringUtil strUtil, resource_adaptor.ResourceAdaptorManager resourceAdaptorManager {
+	char id[]
+
+	bool match(char path[], char expr[]) {
+		String helper[] = strUtil.explode(path, "?")
+		String dirs[] = strUtil.explode(helper[0].string, "/")
+		String exprDirs[] = strUtil.explode(expr, "/")
+
+		if (dirs.arrayLength != exprDirs.arrayLength) { return false }
+		if (dirs.arrayLength == 4)  {id = dirs[2].string}  // storing resource id.
+
+		for (int i = 0; i < exprDirs.arrayLength; i++) {
+			if ((dirs[i].string != exprDirs[i].string) && (exprDirs[i].string != "*")) {
+				return false
+			}
+		}
+		return true
+	}
+
+	void failed(DocStream s) {
+		s.write("{\"response\" : \"failed\"}")
+	}
+
+	bool Web:get(char path[], DocStream stream, HashTable params) {
+		// para cada url, voce pode mapear para uma funcao de um componente qualquer
+		// caso nao a url nao seja uma url esperada, retorne mensagem de falha
+		/* if (match(path, "/resource/test2/list")) {
+			test2.list(stream)
+		} else { failed(stream) } */
+		return true
+	}
+
+	bool Web:post(char path[], char contentType[], byte content[], DocStream stream, HashTable params) {
+		// para cada url, voce pode mapear para uma funcao de um componente qualquer
+		// caso nao a url nao seja uma url esperada, retorne mensagem de falha
+		if (match(path ,"/adaptor/resources/*/data")) {
+				if ((params == null)) { failed(stream) }
+				resourceAdaptorManager.sendData(content, id, stream)
+		} else {
+			if (match(path ,"/adaptor/resources")) {
+					if ((params == null)) { failed(stream) }
+					resourceAdaptorManager.register(content, stream)
+			} else
+	         { failed(stream) }
+    }
+		return true
+	}
+
+	String[] Web:urls() {
+		String exprs[] = new String[]()
+		exprs = new String[](exprs, new String("/adaptor/resources"))
+		exprs = new String[](exprs, new String("/adaptor/resources/{id}/data"))
+		return exprs
+	}
+
+
+
+
+}

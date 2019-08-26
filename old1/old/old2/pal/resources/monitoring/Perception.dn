@@ -1,0 +1,18 @@
+uses data.String
+uses App
+
+interface Perception {
+	/* Assembly functions */
+	String[] getAllConfigs()
+	char[] getConfig()
+	void setMain(char path[], AppParam params[])
+	void setConfig(char config[])
+	void removeComp(String compPaths[])
+	void addComp(String compPaths[])
+	/* Perception functions */
+	Perception(bool verbose)
+	char[] getPerceptionData()//return json
+	void addProxy(char exp[])
+	void removeProxy(char proxyExp[])
+	String[] getProxies()
+}

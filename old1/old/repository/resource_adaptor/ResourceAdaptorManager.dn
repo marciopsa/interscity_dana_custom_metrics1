@@ -1,0 +1,120 @@
+uses data.String
+
+data ResponseToResource {
+	char response[]
+	char uuid[]
+	char device[]
+	char description[]
+	String capabilities[]
+  char status[]
+  dec lat
+  dec lon
+  char country[]
+  char state[]
+  char city[]
+  char neighborhood[]
+  char postal_code[]
+  char created_at[]
+  char updated_at[]
+  int id
+}
+
+/* data Capabilities {
+	char value[]
+}
+
+data ResourceMetaData {
+	char description[]
+	Capabilities capabilities[]
+	char status[]
+	dec lat
+	dec lon
+} */
+
+
+data ResourceMetaData {
+	char description[]
+	String capabilities[]
+	char status[]
+	dec lat
+	dec lon
+}
+
+data InterSCityData {
+	ResourceMetaData data_
+}
+
+component provides ResourceAdaptorManager requires net.http.HTTPRequest request, io.Output out, data.StringUtil strUtil,
+								data.IntUtil intUtil, data.json.JSONEncoder encoder, data.adt.HashTable {
+
+	HashTable resourceMetaData_hashtable = new HashTable()
+
+	int local_id_usedOnResourceAdaptor = 1  // Local ID used on Resource Adaptor.
+
+	void ResourceAdaptorManager:sendData(byte content[], char id[], DocStream docStream) {
+		char url[] = "http://localhost:2020/collector/data/$(id)"
+		Header headers[] = null
+		HTTPResponse response = request.post(url, null, content)
+	}
+
+
+	/* Registering metadata on Resource Catalog */
+	void ResourceAdaptorManager:register(byte content[], DocStream s) {
+		//Request example: curl -d '{"data": {"description": "A public bus","capabilities": ["temperature","humidity","illuminate"],"status": "active","lat": -23.559616,"lon": -46.731386}}' -H 'Content-Type: application/json' http://localhost:2018/adaptor/resources
+		Map map[] = new Map[](new Map("data", "data_"))
+		InterSCityData bus = encoder.jsonToData(content, typeof(InterSCityData), map)
+
+		//Storing metadata on the local database of the Resource Adaptor Microservice.
+		int created_local_id = storeResourceMetaData(bus)
+		out.println("ID stored on Resource Adaptor Microservice: $(intUtil.intToString(created_local_id))")
+
+		// Sending metadata on Resource Catalog
+		out.println("Sending metadata on Resource Catalog...")
+		char url[] = "http://localhost:2019/catalog/resources"
+		Header headers[] = null
+		HTTPResponse response = request.post(url, null, content)
+		ResponseToResource resourceCatalogResponse = encoder.jsonToData(response.content, typeof(ResponseToResource), map)
+
+		//Composing response message to Resource
+		ResponseToResource r = new ResponseToResource()
+		r.device = resourceCatalogResponse.device
+		r.description = resourceCatalogResponse.description
+		r.uuid = resourceCatalogResponse.uuid
+
+		out.println("resourceCatalogResponse.capabilities.arrayLength::::: $(intUtil.intToString(resourceCatalogResponse.capabilities.arrayLength))")
+		r.capabilities = new String[resourceCatalogResponse.capabilities.arrayLength]
+		for (int i = 0; i < resourceCatalogResponse.capabilities.arrayLength; i++) {
+			r.capabilities[i] = resourceCatalogResponse.capabilities[i]
+		}
+		//r.capabilities = new Capabilities[resourceCatalogResponse.capabilities.arrayLength]
+		/* for (int i = 0; i < resourceCatalogResponse.capabilities.arrayLength; i++) {
+			r.capabilities[i] = resourceCatalogResponse.capabilities[i]
+		}  */
+		r.status = resourceCatalogResponse.status
+		r.lat = resourceCatalogResponse.lat
+		r.lon = resourceCatalogResponse.lon
+		r.country = resourceCatalogResponse.country
+		r.state = resourceCatalogResponse.state
+		r.city = resourceCatalogResponse.city
+		r.neighborhood = resourceCatalogResponse.neighborhood
+		r.postal_code = resourceCatalogResponse.postal_code
+		r.created_at = resourceCatalogResponse.created_at
+		r.updated_at = resourceCatalogResponse.updated_at
+		r.id = resourceCatalogResponse.id//created_local_id
+
+		out.println("UUID sent by Resource Catalog: $(resourceCatalogResponse.uuid)")
+		out.println("Sending response to Resource...")
+		s.write(encoder.jsonFromData(r, null))
+	}
+
+	int storeResourceMetaData(InterSCityData resourceMetatData) {
+		int key = local_id_usedOnResourceAdaptor
+		resourceMetaData_hashtable.put(key, resourceMetatData)
+		InterSCityData stored_dJ = resourceMetaData_hashtable.get(key)
+		char stored_status[] = stored_dJ.data_.status
+		local_id_usedOnResourceAdaptor++
+
+		return key
+	}
+
+}

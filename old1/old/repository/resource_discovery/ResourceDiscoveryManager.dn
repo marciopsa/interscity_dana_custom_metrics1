@@ -1,0 +1,125 @@
+uses data.String
+
+data ResourceCapabilitiesToBeSendToApplication {
+	char id[]
+	char name[]
+	char function[]
+	char description[]
+}
+
+data FinalResponse {
+	ResourceCapabilitiesToBeSendToApplication resourceCapabilitiesToBeSendToApplication[]
+}
+
+data ResponseToApplication {
+	FinalResponse resp
+}
+
+
+//============================
+data Response {
+	char response[]
+	char id[]
+	char device[]
+	char description[]
+}
+
+//======================================
+/* data Capabilities {
+	char value[]
+}
+
+ data ResourceMetaData {
+	char description[]
+	Capabilities capabilities[]
+	char status[]
+	dec lat
+	dec lon
+
+} */
+
+data ResourceMetaData {
+ char description[]
+ String capabilities[]
+ char status[]
+ dec lat
+ dec lon
+
+}
+
+data InterSCityData {
+	ResourceMetaData data_
+}
+
+// JSON data to be sent to Resource Adaptor
+/* {
+	"data": {
+		"description": "A public bus",
+		"capabilities": [
+			"temperature",
+			"humidity",
+			"illuminate"
+		],
+		"status": "active",
+		"lat": -23.559616,
+		"lon": -46.731386
+	}
+} */
+
+/* data ResourceCapabilitiesToSendToApplication {
+	char id[]
+	char name[]
+	char function[]
+	char description[]
+}
+
+data ResponseToApplication {
+	ResourceCapabilitiesToSendToApplication resourceCapabilitiesToSendToApplication[]
+	/* {
+  "capabilities": [
+    {
+      "id": 1,
+      "name": "semaphore",
+      "function": 1,
+      "description": "Manipulate the semaphore status"
+    },
+    {
+      "id": 2,
+      "name": "temperature",
+      "function": 0,
+      "description": "Measure the temperature of the environment"
+    }
+  ]
+}
+} */
+
+
+component provides ResourceDiscoveryManager requires net.http.HTTPRequest request, io.Output out, data.StringUtil strUtil,
+							data.IntUtil intUtil, data.json.JSONEncoder encoder, data.adt.HashTable,  {
+
+	/* HashTable resourceMetaData_hashtable = new HashTable()
+
+	//char uuid[]   //Not used yet!!!
+	int global_id = 1 */
+
+
+
+
+  void ResourceDiscoveryManager:discoveryResourceByCapability(char capability_value[], DocStream stream) {
+
+		//curl -H "Content-Type: application/json" -X POST -d '{"capabilities":["environment_monitoring"]}' http://localhost:8000/collector/resources/data
+
+		out.println("inside discoveryResourceByCapability()...\n analising capability value = $(capability_value)")
+
+		char url[] = "http://localhost:2019/catalog/capabilities/$(capability_value)"
+		Header headers[] = null
+		HTTPResponse response = request.get(url, null)//request.post(url, null, content)
+		out.println("response000111: $(response.content)")
+
+		stream.write(response.content)
+
+	}
+
+
+
+}

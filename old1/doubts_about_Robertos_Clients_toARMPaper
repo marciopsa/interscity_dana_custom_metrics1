@@ -1,0 +1,15 @@
+
+
+
+
+In code 
+for (int i = 0; i < 1; i++) {
+			file[i] = new TextFile(new char[]("HFU_HV_RESULTS/request-file-burst-", iu.intToString(i+1), ".data"),
+				File.FILE_ACCESS_WRITE)
+		}
+
+Why to use a for loop?
+
+
+
+

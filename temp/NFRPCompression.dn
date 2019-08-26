@@ -1,0 +1,53 @@
+/* NFRPCompression.dn
+ *
+ * Author: Roberto Rodrigues Filho - Sept @ 2018
+ */
+component provides ws.Web requires io.Output out, ws.Web:nfrp web, interceptor.DSInterceptor,
+	compression.Compression compression, io.File {
+
+	bool Web:get(char path[], DocStream stream, HashTable params) {
+		return web.get(path, stream, params)
+		/* bool result = false
+		DSInterceptor interceptor = new DSInterceptor(null, null, false)
+		interceptor.set(stream)
+		result = web.get(path, interceptor, params)
+		// compress only if result is true
+		if ((result) && (interceptor.get() != null)) {
+			File f = new File("data2compress.data", File.FILE_ACCESS_WRITE)
+			f.write(interceptor.get())
+			f.close()
+			char newName[] = compression.compressResource("data2compress.data")
+			f = new File(newName, File.FILE_ACCESS_READ)
+			byte buf[] = null
+			while (!f.eof()) { buf = new byte[](buf, f.read(1024)) }
+			f.close()
+			stream.write(buf)
+		}
+		return result */
+	}
+
+	bool Web:post(char path[], char contentType[], byte content[], DocStream stream, HashTable params) {
+		return web.post(path, contentType, content, stream, params)
+
+		/* DSInterceptor interceptor = new DSInterceptor(null, null, false)
+		interceptor.set(stream)
+		result = web.post(path, contentType, content, stream, params)
+		// compress only if result is true
+		if ((result) && (interceptor.get() != null)) {
+			File f = new File("data3compress.data", File.FILE_ACCESS_WRITE)
+			f.write(interceptor.get())
+			f.close()
+			char newName[] = compression.compressResource("data3compress.data")
+			f = new File(newName, File.FILE_ACCESS_READ)
+			byte buf[] = null
+			while (!f.eof()) { buf = new byte[](buf, f.read(1024)) }
+			f.close()
+			stream.write(buf)
+		}
+		return result  */
+	}
+
+	String[] Web:urls() {
+		return web.urls()
+	}
+}

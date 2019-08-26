@@ -1,0 +1,112 @@
+uses data.String
+
+data Capabilities {
+	char value[]
+}
+
+data Response {
+	char response[]
+	char uuid[]
+	char device[]
+	char description[]
+	//Capabilities capabilities[]
+	String capabilities[]
+  char status[]
+  dec lat
+  dec lon
+  char country[]
+  char state[]
+  char city[]
+  char neighborhood[]
+  char postal_code[]
+  char created_at[]
+  char updated_at[]
+  int id
+}
+
+component provides App requires net.http.HTTPRequest request, io.Output out, data.IntUtil iu,
+														data.DecUtil du, data.json.JSONParser parser, data.json.JSONEncoder encoder {
+
+	int App:main(AppParam params[]) {
+
+		char jsonBus[] = new char[]("{",
+			"\"data\": {",
+				"\"description\": \"public_bus\",",
+				"\"capabilities\": [\"buslocation\", \"humidity\", \"illuminate\"],",
+				"\"status\": \"active1\",",
+				"\"lat\": -99923.559615,",
+				"\"lon\": -99946.731385",
+				"}",
+			"}")
+
+		out.println("Registering resource on InterSCity Platform...\n")
+		char url[] = "http://localhost:2018/adaptor/resources"
+		HTTPResponse response = request.post(url, null, jsonBus)
+
+		// Showing received values of InterSCity Platform
+		Response formatedResponse = encoder.jsonToData(response.content, typeof(Response), null)
+		out.println("Received values from InterSCity Platform:")
+		out.println("UUID:.........$(formatedResponse.uuid)")
+		out.println("DESCRIPTION:..$(formatedResponse.description)")
+		out.println("CAPABILITIES: ")
+		//char capability_char[]
+		for (int i = 0; i < formatedResponse.capabilities.arrayLength; i++) {
+			//capability_char = formatedResponse.capabilities[i].string
+			out.println("   CAPABILITY $(iu.intToString(i)): $(formatedResponse.capabilities[i].string)")
+		}
+		out.println("STATUS:.......$(formatedResponse.status)")
+		out.println("LATITUDE:.....$(du.decToString(formatedResponse.lat))")
+		out.println("LONGITUDE:....$(du.decToString(formatedResponse.lon))")
+		out.println("COUNTRY:......$(formatedResponse.country)")
+		out.println("STATE:........$(formatedResponse.state)")
+		out.println("CITY:.........$(formatedResponse.city)")
+		out.println("NEIGHBORHOOD:.$(formatedResponse.neighborhood)")
+		out.println("POSTAL CODE:..$(formatedResponse.postal_code)")
+		out.println("CREATED AT:...$(formatedResponse.created_at)")
+		out.println("UPDATED AT:...$(formatedResponse.updated_at)")
+		out.println("ID:...........$(iu.intToString(formatedResponse.id))")
+
+
+		//=========================== registering second resource ====================
+		/* char jsonBus2[] = new char[]("{",
+			"\"data\": {",
+				"\"description\": \"university_campus\",",
+				"\"capabilities\": [\"traffic_light\",\"temperature\", \"illuminate\"],",
+				"\"status\": \"active\",",
+				"\"lat\": -25.559615,",
+				"\"lon\": -49.731385",
+				"}",
+			"}")
+
+		out.println("Registering second resource on InterSCity Platform...\n")
+		url = "http://localhost:2018/adaptor/resources"
+		response = request.post(url, null, jsonBus2)
+
+		// Showing received values of InterSCity Platform
+		formatedResponse = encoder.jsonToData(response.content, typeof(Response), null)
+		out.println("Received values from InterSCity Platform:")
+		out.println("UUID:.........$(formatedResponse.uuid)")
+		out.println("DESCRIPTION:..$(formatedResponse.description)")
+		out.println("CAPABILITIES: ")
+		for (int i = 0; i < formatedResponse.capabilities.arrayLength; i++) {
+			out.println("   CAPABILITY $(iu.intToString(i)): $(formatedResponse.capabilities[i].string)")
+		}
+		out.println("STATUS:.......$(formatedResponse.status)")
+		out.println("LATITUDE:.....$(du.decToString(formatedResponse.lat))")
+		out.println("LONGITUDE:....$(du.decToString(formatedResponse.lon))")
+		out.println("COUNTRY:......$(formatedResponse.country)")
+		out.println("STATE:........$(formatedResponse.state)")
+		out.println("CITY:.........$(formatedResponse.city)")
+		out.println("NEIGHBORHOOD:.$(formatedResponse.neighborhood)")
+		out.println("POSTAL CODE:..$(formatedResponse.postal_code)")
+		out.println("CREATED AT:...$(formatedResponse.created_at)")
+		out.println("UPDATED AT:...$(formatedResponse.updated_at)")
+		out.println("ID:...........$(iu.intToString(formatedResponse.id))")
+
+ */
+
+
+
+		return 0
+	}
+}

@@ -1,0 +1,11 @@
+data ServerInfo {
+	char ip[]
+	int port
+	char name[]
+}
+
+interface ER {
+	event componentConnected()
+	event componentDisconnected()
+	ServerInfo[] getServers()
+}

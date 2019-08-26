@@ -1,0 +1,63 @@
+const char debugMSG[] = "[@DCProxy]"
+
+component provides data_collector.DataCollectorManager, monitoring.BeingMonitored requires io.Output out, 
+	data_collector.DataCollectorManager dataCollector, monitoring.Container, monitoring.ResponseTime,
+	data.StringUtil stringUtil, time.Timer, data.IntUtil iu {
+
+	static Container monitor
+
+	implementation BeingMonitored {
+		Event[] BeingMonitored:getEvents() {
+			if (monitor == null) { monitor = new Container() }
+			return monitor.getEvents()
+		}
+
+		Metric[] BeingMonitored:getMetrics() {
+			if (monitor == null) { monitor = new Container() }
+			return monitor.getMetrics()
+		}
+	
+		void BeingMonitored:turnMonitorOn() {
+			if (monitor == null) { monitor = new Container() }
+			monitor.turnMonitorOn()
+		}
+
+		void BeingMonitored:turnMonitorOff() {
+			if (monitor == null) { monitor = new Container() }
+			monitor.turnMonitorOff()
+		}
+	}
+
+	implementation DataCollectorManager {
+		
+		void DataCollectorManager:storeData(byte content[], char id[], DocStream stream) {
+			if (monitor == null) {
+				monitor = new Container()
+				monitor.turnMonitorOn()
+			}
+			ResponseTime metric = new ResponseTime()
+			metric.start()
+			dataCollector.storeData(content, id, stream)
+			metric.finish()
+			int result = metric.result()
+			monitor.addMetric("response_time", result, false)
+			// TODO: need to think of an event
+			monitor.addEvent("frequency_store", 1)
+		}
+		
+		void DataCollectorManager:receiveDataFromResource(char resource_id[], DocStream stream) {
+			if (monitor == null) {
+				monitor = new Container()
+				monitor.turnMonitorOn()
+			}
+			ResponseTime metric = new ResponseTime()
+			metric.start()
+			dataCollector.receiveDataFromResource(resource_id, stream)
+			metric.finish()
+			int result = metric.result()
+			monitor.addMetric("response_time", result, false)
+			// TODO: need to think of a better event
+			monitor.addEvent("frequency_receive", 1)
+		}
+	}
+}

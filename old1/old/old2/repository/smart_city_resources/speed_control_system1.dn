@@ -1,0 +1,208 @@
+uses data.String
+uses time.DateTime
+
+data Capabilities {
+	char value[]
+}
+
+data Response {
+	char response[]
+	char uuid[]
+	char device[]
+	char description[]
+	//Capabilities capabilities[]
+	String capabilities[]
+  char status[]
+  dec lat
+  dec lon
+  char country[]
+  char state[]
+  char city[]
+  char neighborhood[]
+  char postal_code[]
+  char created_at[]
+  char updated_at[]
+  int id
+}
+
+data ResponseFromInterscityPlatformRegistry {
+	char response[]
+	char uuid[]
+	char device[]
+	char description[]
+	String capabilities[]
+  char status[]
+  dec lat
+  dec lon
+  char country[]
+  char state[]
+  char city[]
+  char neighborhood[]
+  char postal_code[]
+  char created_at[]
+  char updated_at[]
+  int id
+}
+
+data ErrorResponseFromInterscityPlatformRegistry{
+  char error_message[]
+}
+
+component provides App requires net.http.HTTPRequest request, io.Output out, time.Calendar calendar, data.IntUtil iu,
+														data.DecUtil du, data.json.JSONParser parser, data.json.JSONEncoder encoder, time.Timer timer {
+
+  int App:main(AppParam params[]) {
+
+		// ---------- Registering the Speed Control System as a resource on InterSCity Platform --------------
+		char jsonSpeedControlSystem[] = new char[]("{",
+			"\"data\": {",
+				"\"description\": \"speed_control_system\",",
+				"\"capabilities\": [\"vehicles_speed\"],",
+				"\"status\": \"active\",",
+				"\"lat\": -20.659617,",
+				"\"lon\": -48.531389",
+				"}",
+			"}")
+
+		out.println("Registering the resource on InterSCity Platform...\n")
+		char url[] = "http://localhost:2018/adaptor/resources"
+		HTTPResponse response = request.post(url, null, jsonSpeedControlSystem)
+
+		// Showing received values of InterSCity Platform
+		ResponseFromInterscityPlatformRegistry formatedResponse = encoder.jsonToData(response.content, typeof(Response), null)
+		out.println("Received values from InterSCity Platform:")
+		out.println("UUID:.........$(formatedResponse.uuid)")
+		out.println("DESCRIPTION:..$(formatedResponse.description)")
+		out.println("CAPABILITIES: ")
+		for (int i = 0; i < formatedResponse.capabilities.arrayLength; i++) {
+			out.println("   CAPABILITY $(iu.intToString(i)): $(formatedResponse.capabilities[i].string)")
+		}
+		out.println("STATUS:.......$(formatedResponse.status)")
+		out.println("LATITUDE:.....$(du.decToString(formatedResponse.lat))")
+		out.println("LONGITUDE:....$(du.decToString(formatedResponse.lon))")
+		out.println("COUNTRY:......$(formatedResponse.country)")
+		out.println("STATE:........$(formatedResponse.state)")
+		out.println("CITY:.........$(formatedResponse.city)")
+		out.println("NEIGHBORHOOD:.$(formatedResponse.neighborhood)")
+		out.println("POSTAL CODE:..$(formatedResponse.postal_code)")
+		out.println("CREATED AT:...$(formatedResponse.created_at)")
+		out.println("UPDATED AT:...$(formatedResponse.updated_at)")
+		out.println("ID:...........$(iu.intToString(formatedResponse.id))")
+
+		for(int i = 0; i < 15; i++) {
+		//while (true) {
+		  char jsonSpeedControlSystem_DataToBeSent[] = new char[]("{",
+			"\"data\": {",
+					"\"speed_control_system\": [",
+						"{",
+							"\"location\": {",
+								"\"lat\": -18.500327,",
+								"\"lon\": -29.959613",
+								"},",
+							"\"speed\": 110,",
+							//"\"uuid\": 1,",
+							"\"uuid\": $(formatedResponse.uuid),",
+							"\"timestamp\": \"2018-07-25T17:52:25.428Z\"",
+						"}",
+					"]",
+				"}",
+			"}")
+
+			 out.println("Sending data to the InterSCity Platform...")
+			 out.println("formatedResponse.uuid: $(formatedResponse.uuid)")
+			 url = "http://localhost:2018/adaptor/resources/$(formatedResponse.uuid)/data"
+			 response = request.post(url, null, jsonSpeedControlSystem_DataToBeSent)
+			 if((response.headers[0].value) == "HTTP/1.1 200 OK") { out.println("Data sent successfully!") }
+
+			 timer.sleep(1000)
+		 }
+
+
+		//========================================================================================
+
+		// ---------- Registering a public bus as a resource on InterSCity Platform --------------
+		/* char jsonBus[] = new char[]("{",
+			"\"data\": {",
+				"\"description\": \"public_bus\",",
+				"\"capabilities\": [\"buslocation\", \"humidity\", \"illuminate\"],",
+				"\"status\": \"active\",",
+				"\"lat\": -23.559615,",
+				"\"lon\": -46.731385",
+			"}",
+		"}")
+
+		out.println("Registering resource on InterSCity Platform...\n")
+		url = "http://localhost:2018/adaptor/resources"
+		response = request.post(url, null, jsonBus)
+
+		// Showing received values of InterSCity Platform
+		formatedResponse = encoder.jsonToData(response.content, typeof(ResponseFromInterscityPlatformRegistry), null)
+		out.println("Received values from InterSCity Platform:")
+		out.println("UUID:.........$(formatedResponse.uuid)")
+		out.println("DESCRIPTION:..$(formatedResponse.description)")
+		out.println("CAPABILITIES: ")
+		for (int i = 0; i < formatedResponse.capabilities.arrayLength; i++) {
+			out.println("   CAPABILITY $(iu.intToString(i)): $(formatedResponse.capabilities[i].string)")
+		}
+		out.println("STATUS:.......$(formatedResponse.status)")
+		out.println("LATITUDE:.....$(du.decToString(formatedResponse.lat))")
+		out.println("LONGITUDE:....$(du.decToString(formatedResponse.lon))")
+		out.println("COUNTRY:......$(formatedResponse.country)")
+		out.println("STATE:........$(formatedResponse.state)")
+		out.println("CITY:.........$(formatedResponse.city)")
+		out.println("NEIGHBORHOOD:.$(formatedResponse.neighborhood)")
+		out.println("POSTAL CODE:..$(formatedResponse.postal_code)")
+		out.println("CREATED AT:...$(formatedResponse.created_at)")
+		out.println("UPDATED AT:...$(formatedResponse.updated_at)")
+		out.println("ID:...........$(iu.intToString(formatedResponse.id))")
+
+		//================================================================================
+		// ---------- Sending Data to Data Collector via Resource Adaptor ----------------
+
+		char current_dateTime[] = getCurrentDateTime()
+		out.println("current_dateTime: $(current_dateTime)")
+
+
+		for(int i = 0; i < 5; i++) {
+		//while (true) {
+		  char jsonBus_DataToBeSent[] = new char[]("{",
+			"\"data\": {",
+					"\"public_bus\": [",
+						"{",
+							"\"location\": {",
+								"\"lat\": -10.00032,",
+								"\"lon\": -23.559615",
+								"},",
+							"\"speed\": 54,",
+							"\"uuid\": 2,",
+							"\"bus_line\": \"875c-10-1\",",
+							"\"timestamp\": \"2017-06-14T17:52:25.428Z\"",
+						"}",
+					"]",
+				"}",
+			"}")
+
+
+			 out.println("Sending data to the InterSCity Platform...")
+			 out.println("formatedResponse.uuid: $(formatedResponse.uuid)")
+			 url = "http://localhost:2018/adaptor/resources/$(formatedResponse.uuid)/data"
+			 response = request.post(url, null, jsonBus_DataToBeSent)
+			 if((response.headers[0].value) == "HTTP/1.1 200 OK") { out.println("Data sent successfully!") }
+
+			 timer.sleep(6000)
+
+		 } */
+	 	 return 0
+   }
+
+	char[] getCurrentDateTime() {
+		DateTime current_dateAndTime =  calendar.getTime()
+		int2 current_year = current_dateAndTime.year
+
+		char current_dateTime[] = iu.intToString(current_year)
+
+		out.println("current_year: $(iu.intToString(current_year))")
+
+		return current_dateTime
+	}
+}

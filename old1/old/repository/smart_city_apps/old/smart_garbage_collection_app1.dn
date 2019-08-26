@@ -1,0 +1,147 @@
+uses data.String
+/* data ResourceCapabilitiesToBeSendToApplication {
+	char id[]
+	char name[]
+	char function[]
+	char description[]
+}
+
+data ResponseToApplication {
+	ResourceCapabilitiesToBeSendToApplication resourceCapabilitiesToBeSendToApplication[]
+} */
+
+
+
+data ResourceCapabilitiesToBeSendToApplication {
+	char id[]
+	char name[]
+	char function[]
+	char description[]
+}
+
+data FinalResponse {
+	ResourceCapabilitiesToBeSendToApplication resourceCapabilitiesToBeSendToApplication[]
+}
+
+data ResponseToApplication {
+	FinalResponse resp
+}
+
+
+
+data ResourceMetaData {
+	char uuid[]
+	char description[]
+	String capabilities[]
+	char status[]
+	dec lat
+	dec lon
+}
+
+data InterSCityData {
+	ResourceMetaData data_
+}
+
+
+data ResponseToResource {
+	char response[]
+	char uuid[]
+	char device[]
+	char description[]
+	String capabilities[]
+  char status[]
+  dec lat
+  dec lon
+  char country[]
+  char state[]
+  char city[]
+  char neighborhood[]
+  char postal_code[]
+  char created_at[]
+  char updated_at[]
+  int id
+}
+
+component provides App requires net.http.HTTPRequest request, data.json.JSONEncoder encoder, io.Output out,
+															data.IntUtil iu, data.DecUtil du, data.json.JSONParser parser {
+
+
+
+
+
+	int App:main(AppParam params[]) {
+
+		/* char jsonBus[] = new char[]("{",
+			"\"data\": {",
+				"\"description\": \"A public bus!!!\",",
+				"\"capabilities\": [\"temperature\", \"humidity\", \"illuminate\"],",
+				"\"status\": \"active\",",
+				"\"lat\": -23.559615,",
+				"\"lon\": -46.731385",
+				"}",
+			"}")					 */
+
+		out.println("Accessing the Resource Discovery...")
+		out.println("Searching for resources which have the ability to monitor dumpsters in the city...")
+		//char url[] = "http://localhost:2021/discovery/resources?capability=environment_monitoring"
+		//char url[] = "http://localhost:2021/discovery/resources?capability=temperature"
+		//char url[] = "http://localhost:2021/discovery/resources?capability=humidity"
+		//char url[] = "http://localhost:2021/discovery/resources?capability=traffic_light"
+		//char url[] = "http://localhost:2021/discovery/resources?capability=university_campus"
+		//char url[] = "http://localhost:2021/discovery/resources?capability=public_bus"
+		char url[] = "http://localhost:2021/discovery/resources?capability=collected_garbage_monitoring"
+
+		HTTPResponse response = request.get(url, null)
+
+
+		// Showing received values of InterSCity Platform
+		// Showing received values of InterSCity Platform
+		//Response formatedResponse = encoder.jsonToData(response.content, typeof(Response), null)
+		/* InterSCityData formatedResponse = encoder.jsonToData(response.content, typeof(InterSCityData), null)
+		out.println("Received values from InterSCity Platform:")
+		out.println("UUID:.........$(formatedResponse.data_.uuid)")
+		out.println("DESCRIPTION:..$(formatedResponse.data_.description)") */
+
+		//Composing response message to Resource Adaptor Microservice
+
+		ResponseToResource formatedResponse = encoder.jsonToData(response.content, typeof(ResponseToResource), null)
+		out.println("Received values from InterSCity Platform:")
+		out.println("UUID:.........$(formatedResponse.uuid)")
+		out.println("DESCRIPTION:..$(formatedResponse.description)")
+
+
+		//ResponseToApplication resp = encoder.jsonToData(response.content, typeof(ResponseToApplication), null)
+
+		//response = request.get("localhost:2018/resource/test2/list", null)
+		out.println("Discovered resources:")
+		out.println("response.content: $(response.content)")
+
+
+
+		//Get data from Data Collector
+		out.println("Accessing the Data collector...")
+		out.println("Getting resource data...")
+		url = "http://localhost:2020//collector/datafromresource/$(formatedResponse.uuid)"
+		response = request.get(url, null)
+
+		//ResponseToApplication resp = encoder.jsonToData(response.content, typeof(ResponseToApplication), null)
+
+		//response = request.get("localhost:2018/resource/test2/list", null)
+		out.println("Data received:")
+		out.println("response.content: $(response.content)")
+
+
+
+		return 0
+
+
+
+
+
+
+
+
+
+	}
+
+}

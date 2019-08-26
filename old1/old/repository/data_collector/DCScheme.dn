@@ -1,0 +1,61 @@
+const char debugMSG[] = "[@DanaPediaDBCreator]"
+
+component provides App requires io.Output out, data.mysql.MySQL, encoding.Encoder:uri encoder {
+
+	int App:main(AppParam params[]) {
+		/* mysql object */
+		MySQL mysql = new MySQL("localhost", 0, "root", "root", "")
+
+		/* queries */
+		char dropDBQuery[] = new char[]("DROP DATABASE IF EXISTS data_collector;")
+		char createDBQuery[] = new char[]("CREATE DATABASE data_collector;")
+		char useDBQuery[] = new char[]("USE data_collector;")
+		char createDataTableQuery[] = new char[]("CREATE TABLE `data` (",
+		  "`id_data` int(11) NOT NULL AUTO_INCREMENT,",
+		  "`value` varchar(512) DEFAULT NULL,",
+       "`uuid` varchar(512) DEFAULT NULL,",
+		  "PRIMARY KEY (`id_data`)",
+		") ENGINE=InnoDB DEFAULT CHARSET=latin1;")
+
+		/* queries execution ... */
+		out.println("$(debugMSG) Welcome to DataCollector database creator!")
+		out.println("$(debugMSG) Creating database...")
+		mysql.execute(dropDBQuery)
+		mysql.execute(createDBQuery)
+		mysql.execute(useDBQuery)
+		mysql.execute(createDataTableQuery)
+
+		/* data insertion - execution */
+    /*char egData[] = new char[]("{",
+     "\"data\": {",
+       "\"public_bus\": [",
+         "{",
+           "\"location\": {",
+             "\"lat\": -10.00032,",
+             "\"lon\": -23.559615",
+             "},",
+           "\"speed\": 54,",
+           "\"uuid\": 2,",
+           "\"bus_line\": \"875c-10-1\",",
+           "\"timestamp\": \"2017-06-14T17:52:25.428Z\"",
+         "}",
+       "]",
+     "}",
+   "}")
+		mysql.execute(new char[]("INSERT INTO data (value, uuid) VALUES (\"", encoder.encode(egData) ,"\" ,\"2\");"))
+    mysql.execute(new char[]("INSERT INTO data (value, uuid) VALUES (\"", encoder.encode(egData) ,"\" ,\"2\");"))*/
+
+    /* quering */
+  /*  char egQuery[] = new char[]("SELECT * FROM data;")
+    mysql.execute(egQuery)
+    Row rows[] = mysql.fetchAll()
+    out.println("$(egData)")
+    out.println("$(encoder.decode(rows[0].fields[1].value))")*/
+
+    /* closing... */
+		out.println("$(debugMSG) Database created!\nBye!")
+		mysql.close()
+
+		return 0
+	}
+}

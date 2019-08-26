@@ -1,0 +1,171 @@
+
+
+component provides DataCollectorManager requires net.http.HTTPRequest request, io.Output out,
+ 	data.StringUtil strUtil, data.IntUtil intUtil, data.json.JSONEncoder encoder, data.adt.HashTable,
+	encoding.Encoder:uri codifier, data.mysql.MySQL, compression.Compression compression, io.File {
+
+      bool cachedData = false
+      CityResourceData lastDataFromResourceInCache
+
+	void DataCollectorManager:storeData(byte content[], char id[], DocStream s) {
+		MySQL mysql = new MySQL("localhost", 0, "root", "root", "data_collector")
+		/* storing data */
+		//out.println("Storing data with id: $(id)...")
+		mysql.execute(new char[]("INSERT INTO data (value, uuid) VALUES (\"", codifier.encode(content)
+			,"\", \"", id ,"\");"))
+
+
+		//recovering data from DB.
+		/* char egQuery[] = new char[]("SELECT * FROM data ORDER BY id_data DESC;")
+		mysql.execute(egQuery)
+		Row rows[] = mysql.fetchAll() */
+		//out.println("Stored content DB: $(codifier.decode(rows[0].fields[1].value))")
+
+
+		mysql.close()
+	}
+
+  void DataCollectorManager:getAllDataFromResource(char resource_id[], DocStream stream) {
+    //out.println("uuid found on receiveDataFromResource() method : $(resource_id)")
+    //out.println("entrando no getAllDataFromResource...")
+    CityResourceData json_DataToBeSent = getAllDataSentFromResource(resource_id)
+    if (json_DataToBeSent == null) {
+      stream.write("resource data not found")
+    } else {
+      stream.write(json_DataToBeSent.resourceData)
+    }
+  }
+
+	void DataCollectorManager:receiveDataFromResource(char resource_id[], DocStream stream) {
+		//out.println("uuid found on receiveDataFromResource() method : $(resource_id)")
+		CityResourceData jsonBus_DataToBeSent = getLastDataSentFromResourceUsingCache(resource_id)
+		if (jsonBus_DataToBeSent == null) {
+			stream.write("resource data not found")
+		} else {
+			stream.write(jsonBus_DataToBeSent.resourceData)
+		}
+	}
+
+
+	CityResourceData getLastDataSentFromResourceUsingCache(char resource_id[]) {
+
+  if (cachedData) {
+    return lastDataFromResourceInCache
+  } else {
+    MySQL mysql = new MySQL("localhost", 0, "root", "root", "data_collector")
+		//out.println("Getting data with id: $(resource_id)...")
+		char query[] = new char[]("SELECT * FROM data WHERE uuid = \"", resource_id, "\" ORDER BY id_data DESC;")
+		mysql.execute(query)
+		Row rows[] = mysql.fetchAll()
+		//recovering data from DB.
+		//CityResourceData lastDataFromResource = new CityResourceData()
+    lastDataFromResourceInCache = new CityResourceData()
+		lastDataFromResourceInCache.resourceData = codifier.decode(rows[0].fields[1].value)
+		byte storeContent[] = lastDataFromResourceInCache.resourceData
+
+    cachedData = true
+		//out.println("lastDataFromResource content DB: $(storeContent)")
+
+		mysql.close()
+		return lastDataFromResourceInCache
+  }
+
+    MySQL mysql = new MySQL("localhost", 0, "root", "root", "data_collector")
+		//out.println("Getting data with id: $(resource_id)...")
+		char query[] = new char[]("SELECT * FROM data WHERE uuid = \"", resource_id, "\" ORDER BY id_data DESC;")
+		mysql.execute(query)
+		Row rows[] = mysql.fetchAll()
+		//recovering data from DB.
+		CityResourceData lastDataFromResource = new CityResourceData()
+		lastDataFromResource.resourceData = codifier.decode(rows[0].fields[1].value)
+		byte storeContent[] = lastDataFromResource.resourceData
+
+
+		//out.println("lastDataFromResource content DB: $(storeContent)")
+
+		mysql.close()
+		return lastDataFromResource
+	}
+
+  // This method uses COMPRESSION
+  CityResourceData getAllDataSentFromResource(char resource_id[]) {
+    //out.println("entrando no getLastDataSentFromResource...")
+    MySQL mysql = new MySQL("localhost", 0, "root", "root", "data_collector")
+    //out.println("Getting data with id: $(resource_id)...")
+    char query[] = new char[]("SELECT * FROM data WHERE uuid = \"", resource_id, "\" ORDER BY id_data DESC;")
+    mysql.execute(query)
+    Row rows[] = mysql.fetchAll()
+
+
+    //recovering data from DB.
+    /* CityResourceData lastDataFromResource = new CityResourceData()
+    lastDataFromResource.resourceData = codifier.decode(rows[0].fields[1].value)
+    byte storeContent[] = lastDataFromResource.resourceData */
+
+    char storeContent[] = encoder.jsonFromArray(rows, null)
+    mysql.close()
+
+
+    /* out.println("entrando no getAllDataSentFromResource...")
+		MySQL mysql = new MySQL("localhost", 0, "root", "root", "data_collector")
+		//out.println("Getting data with id: $(resource_id)...")
+		char query[] = new char[]("SELECT * FROM data WHERE uuid = \"", resource_id, "\" ORDER BY id_data DESC;")
+		mysql.execute(query)
+		Row rows[] = mysql.fetchAll()
+
+    //char jsonResp[] = codifier.decode(rows[0].fields[1].value)
+    char jsonResp[] = encoder.jsonFromArray(rows, null)
+
+    out.println("jsonResp..: $(jsonResp)")
+
+
+		mysql.close()
+
+		return jsonResp */
+
+
+
+
+    File f = new File("result_temp.data", File.FILE_ACCESS_WRITE)
+    f.write(storeContent)
+    f.close()
+
+    char newName[] = compression.compressResource("result_temp.data")
+    f = new File(newName, File.FILE_ACCESS_READ)
+
+
+    //out.println("lastDataFromResource content DB: $(storeContent)")
+    CityResourceData compressedData = new CityResourceData()
+    byte buf[] = null
+    while (f.eof()) { buf = new byte[](buf, f.read(1024)) }
+    compressedData.resourceData = buf
+    compressedData.encoding = compression.algorithmName()
+
+    return compressedData
+  }
+
+  /* // This method doesn't use COMPRESSION
+  CityResourceData getAllDataSentFromResource(char resource_id[]) {
+		out.println("entrando no getAllDataSentFromResource...")
+		MySQL mysql = new MySQL("localhost", 0, "root", "root", "data_collector")
+		//out.println("Getting data with id: $(resource_id)...")
+		char query[] = new char[]("SELECT * FROM data WHERE uuid = \"", resource_id, "\" ORDER BY id_data DESC;")
+		mysql.execute(query)
+		Row rows[] = mysql.fetchAll()
+		//recovering data from DB.
+
+    //CityResourceData allCityResourceData = new CityResourceData()
+    byte storeContent[] = new byte[]
+    CityResourceData newDataFromResource = new CityResourceData()
+    for (int i = 0; i < rows.arrayLength; i++) {
+  		newDataFromResource.resourceData = codifier.decode(rows[i].fields[1].value)
+  		//byte storeContent[] = newDataFromResource.resourceData
+      //storeContent = storeContent + newDataFromResource.resourceData
+    }
+
+		mysql.close()
+
+		return newDataFromResource
+	} */
+
+}

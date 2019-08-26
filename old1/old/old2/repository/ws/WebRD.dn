@@ -1,0 +1,67 @@
+// Dispatcher...
+component provides ws.Web requires io.Output out, data.StringUtil strUtil, resource_discovery.ResourceDiscoveryManager resourceDiscoveryManager {
+
+	/* bool match(char path[], char expr[]) {
+		String dirs[] = strUtil.explode(path, "/")
+		String exprDirs[] = strUtil.explode(expr, "/")
+		if (dirs.arrayLength < exprDirs.arrayLength) { return false }
+		for (int i = 0; i < exprDirs.arrayLength; i++) {
+			if ((dirs[i].string != exprDirs[i].string) && (exprDirs[i].string != "*")) {
+				return false
+			}
+		}
+		return true
+	} */
+
+	bool match(char path[], char expr[]) {
+		String helper[] = strUtil.explode(path, "?")
+		String dirs[] = strUtil.explode(helper[0].string, "/")
+		String exprDirs[] = strUtil.explode(expr, "/")
+		if (dirs.arrayLength != exprDirs.arrayLength) { return false }
+		for (int i = 0; i < exprDirs.arrayLength; i++) {
+			if ((dirs[i].string != exprDirs[i].string) && (exprDirs[i].string != "*")) {
+				return false
+			}
+		}
+		return true
+	}
+
+	void failed(DocStream s) {
+		s.write("{\"response\" : \"failed\"}")
+	}
+
+	bool Web:get(char path[], DocStream stream, HashTable params) {
+		// para cada url, voce pode mapear para uma funcao de um componente qualquer
+		// caso a url nao seja uma url esperada, retorne mensagem de falha
+		if (match(path, "/resource/test2/list")) {
+			//test2.list(stream)
+		// pra entrar nesse else if, faca um requisicao para: localhost:2018/resources/test?something=something_else
+		} else if (match(path, "/discovery/resources")) {
+			if (params != null) {
+				String value = params.get("capability")
+				if (value != null) {
+					out.println("current capability: $(value.string)")
+					resourceDiscoveryManager.discoveryResourceByCapability(value.string, stream)
+				}
+			}
+		} else { failed(stream) }
+		return true
+	}
+
+	bool Web:post(char path[], char contentType[], byte content[], DocStream stream, HashTable params) {
+
+
+		return true
+	}
+
+	String[] Web:urls() {
+		String exprs[] = new String[]()
+		exprs = new String[](exprs, new String("/discovery/resources"))
+		//exprs = new String[](exprs, new String("/adaptor/resources/{id}/data"))
+		return exprs
+	}
+
+
+
+
+}

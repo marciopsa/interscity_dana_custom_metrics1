@@ -1,0 +1,88 @@
+/* NFRProxy.dn
+ *
+ * Some codes are copied from Roberto Rodrigues
+ *
+ * Author: Marcio Pereira de Sá - March @ 2019
+ */
+
+const char debugMSG[] = "[@NFRPGroupingMessages]"
+component provides ws.Web requires data.StringUtil strUtil,io.Output out, ws.Web:nfrp web {
+	const int MAX_NUM_OF_RECEIVED_MESSAGES_ALLOWED = 10
+
+	byte accumulatedMessages_response[10]
+
+	int num_of_received_messages = 0
+
+
+	char id[]
+
+	bool match(char path[], char expr[]) {
+		String helper[] = strUtil.explode(path, "?")
+		String dirs[] = strUtil.explode(helper[0].string, "/")
+		String exprDirs[] = strUtil.explode(expr, "/")
+
+		if (dirs.arrayLength != exprDirs.arrayLength) { return false }
+		if (dirs.arrayLength == 4)  {id = dirs[2].string}  // storing resource id.
+
+		for (int i = 0; i < exprDirs.arrayLength; i++) {
+			if ((dirs[i].string != exprDirs[i].string) && (exprDirs[i].string != "*")) {
+				return false
+			}
+		}
+		return true
+	}
+
+	void failed(DocStream s) {
+		s.write("{\"response\" : \"failed\"}")
+	}
+
+
+
+
+
+
+	bool Web:get(char path[], DocStream stream, HashTable params) {
+		return web.get(path, stream, params)
+	}
+
+	bool Web:post(char path[], char contentType[], byte content[], DocStream stream, HashTable params) {
+		//return web.post(path, contentType, content, stream, params)
+
+		if (match(path ,"/adaptor/resources/*/data")) {
+			bool result = true
+			if (num_of_received_messages >= MAX_NUM_OF_RECEIVED_MESSAGES_ALLOWED) {
+				//stream.write(accumulatedMessages_response)
+				result = web.post(path, contentType, accumulatedMessages_response, stream, params)
+				num_of_received_messages = 0
+				out.println("$(debugMSG) Number of received messages (after sending a grouped message): $(num_of_received_messages)")
+				return true
+			}
+			accumulatedMessages_response[num_of_received_messages]
+			num_of_received_messages++
+			out.println("$(debugMSG) Number of received messages: $(num_of_received_messages)")
+
+			return result
+
+		} else {
+			return web.post(path, contentType, content, stream, params)
+    }
+		return true
+
+
+
+
+
+
+	}
+
+	/* String[] Web:urls() {
+		return web.urls()
+	} */
+
+	String[] Web:urls() {
+		String exprs[] = new String[]()
+		exprs = new String[](exprs, new String("/adaptor/resources"))
+		exprs = new String[](exprs, new String("/adaptor/resources/{id}/data"))
+		return exprs
+	}
+}
